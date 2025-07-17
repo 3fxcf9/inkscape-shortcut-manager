@@ -1,10 +1,10 @@
-from Xlib import X, XK
+from Xlib import XK, X
 
+import styles
+import text
 from clipboard import copy
 from constants import TARGET
 from vim import open_vim
-import text
-import styles
 
 # Set of pressed keys
 pressed = set()
@@ -15,19 +15,20 @@ pressed = set()
 # Then it either discards the preceding events, or replays them
 events = []
 
+
 def event_to_string(self, event):
     mods = []
     if event.state & X.ShiftMask:
-        mods.append('Shift')
+        mods.append("Shift")
 
     if event.state & X.ControlMask:
-        mods.append('Control')
+        mods.append("Control")
 
     keycode = event.detail
     keysym = self.disp.keycode_to_keysym(keycode, 0)
     char = XK.keysym_to_string(keysym)
 
-    return ''.join(mod + '+' for mod in mods) + (char if char else '?')
+    return "".join(mod + "+" for mod in mods) + (char if char else "?")
 
 
 def replay(self):
@@ -37,15 +38,16 @@ def replay(self):
     self.disp.flush()
     self.disp.sync()
 
+
 def normal_mode(self, event, char):
     events.append(event)
 
     if event.type == X.KeyPress and char:
         pressed.add(event_to_string(self, event))
-        return 
+        return
 
     if event.type != X.KeyRelease:
-        return 
+        return
 
     handled = False
     if len(pressed) > 1:
@@ -55,7 +57,7 @@ def normal_mode(self, event, char):
         # Get the only element in pressed
         ev = next(iter(pressed))
         handled = handle_single_key(self, ev)
-        
+
     # replay events to Inkscape if we couldn't handle them
     if not handled:
         replay(self)
@@ -63,48 +65,73 @@ def normal_mode(self, event, char):
     events.clear()
     pressed.clear()
 
+
 def handle_single_key(self, ev):
-    if ev == 't':
+    if ev == "t":
         # Vim mode
         open_vim(self, compile_latex=False)
-    elif ev == 'Shift+t':
+    elif ev == "Shift+t":
         # Vim mode prerendered
         open_vim(self, compile_latex=True)
-    elif ev == 'a':
+    elif ev == "a":
         # Add objects mode
         self.mode = styles.object_mode
-    elif ev == 'Shift+a':
+    elif ev == "Shift+a":
         # Save objects mode
         styles.save_object_mode(self)
-    elif ev == 's':
+    elif ev == "c":
         # Apply style mode
         self.mode = styles.style_mode
-    elif ev == 'Shift+s':
+    elif ev == "Shift+c":
         # Save style mode
         styles.save_style_mode(self)
-    elif ev == 'w':
-        # Pencil
-        self.press('p')
-    elif ev == 'x':
+    elif ev == "f":
+        # Rectangle
+        self.press("r")
+    elif ev == "Shift+v":
+        # Flip horizontally
+        self.press("h")
+    elif ev == "q":
         # Snap
-        self.press('percent', X.ShiftMask)
-    elif ev == 'f':
-        # Bezier
-        self.press('b')
-    elif ev == 'z':
+        self.press("percent", X.ShiftMask)
+    elif ev == "l":
+        # Substract
+        self.press("minus", X.ControlMask)
+    elif ev == "z":
         # Undo
-        self.press('z', X.ControlMask)
-    elif ev == 'Shift+z':
+        self.press("z", X.ControlMask)
+    elif ev == "w":
         # Delete
-        self.press('Delete')
-    elif ev == '`':
+        self.press("Delete")
+    elif ev == "`":
         # Disabled mode
-        self.press('t')
+        self.press("t")
         self.mode = text.text_mode
     else:
         # Not handled
         return False
     return True
+
+
+### Keybinds ###
+# Adapted for the Ergo-L layout
+
+# Fill / Arrow
+arrow_key = "a"
+double_arrow_key = "q"
+filled_key = "c"
+white_key = "s"
+black_key = "z"
+
+# Thickness
+bold_key = "e"
+heavy_key = "o"
+
+# Style
+dots_key = "w"
+normal_key = "f"
+dash_key = "v"
+
 
 def paste_style(self, combination):
     """
@@ -114,81 +141,88 @@ def paste_style(self, combination):
     """
 
     # Stolen from TikZ
-    pt = 1.327 # pixels
+    pt = 1.327  # pixels
     w = 0.4 * pt
     thick_width = 0.8 * pt
     very_thick_width = 1.2 * pt
 
-    style = {
-        'stroke-opacity': 1
-    }
+    style = {"stroke-opacity": 1}
 
-    if {'s', 'a', 'd', 'g', 'h', 'x', 'e'} & combination:
-        style['stroke'] = 'black'
-        style['stroke-width'] = w
-        style['marker-end'] = 'none'
-        style['marker-start'] = 'none'
-        style['stroke-dasharray'] = 'none'
+    if {
+        arrow_key,
+        double_arrow_key,
+        normal_key,
+        bold_key,
+        heavy_key,
+        dots_key,
+        dash_key,
+    } & combination:
+        style["stroke"] = "black"
+        style["stroke-width"] = w
+        style["marker-end"] = "none"
+        style["marker-start"] = "none"
+        style["stroke-dasharray"] = "none"
     else:
-        style['stroke'] = 'none'
+        style["stroke"] = "none"
 
-    if 'g' in combination:
+    if bold_key in combination:
         w = thick_width
-        style['stroke-width'] = w
+        style["stroke-width"] = w
 
-    if 'h' in combination:
+    if heavy_key in combination:
         w = very_thick_width
-        style['stroke-width'] = w
+        style["stroke-width"] = w
 
-    if 'a' in combination:
-        style['marker-end'] = f'url(#marker-arrow-{w})'
+    if arrow_key in combination:
+        style["marker-end"] = f"url(#marker-arrow-{w})"
 
-    if 'x' in combination:
-        style['marker-start'] = f'url(#marker-arrow-{w})'
-        style['marker-end'] = f'url(#marker-arrow-{w})'
+    if double_arrow_key in combination:
+        style["marker-start"] = f"url(#marker-arrow-{w})"
+        style["marker-end"] = f"url(#marker-arrow-{w})"
 
-    if 'd' in combination:
-        style['stroke-dasharray'] = f'{w},{2*pt}'
+    if dots_key in combination:
+        style["stroke-dasharray"] = f"{w},{2*pt}"
 
-    if 'e' in combination:
-        style['stroke-dasharray'] = f'{3*pt},{3*pt}'
+    if dash_key in combination:
+        style["stroke-dasharray"] = f"{3*pt},{3*pt}"
 
-    if 'f' in combination:
-        style['fill'] = 'black'
-        style['fill-opacity'] = 0.12
+    if filled_key in combination:
+        style["fill"] = "black"
+        style["fill-opacity"] = 0.12
 
-    if 'b' in combination:
-        style['fill'] = 'black'
-        style['fill-opacity'] = 1
+    if black_key in combination:
+        style["fill"] = "black"
+        style["fill-opacity"] = 1
 
-    if 'w' in combination:
-        style['fill'] = 'white'
-        style['fill-opacity'] = 1
+    if white_key in combination:
+        style["fill"] = "white"
+        style["fill-opacity"] = 1
 
-    if {'f', 'b', 'w'} & combination:
-        style['marker-end'] = 'none'
-        style['marker-start'] = 'none'
+    if {filled_key, black_key, white_key} & combination:
+        style["marker-end"] = "none"
+        style["marker-start"] = "none"
 
-    if not {'f', 'b', 'w'} & combination:
-        style['fill'] = 'none'
-        style['fill-opacity'] = 1
+    if not {filled_key, black_key, white_key} & combination:
+        style["fill"] = "none"
+        style["fill-opacity"] = 1
 
-    if style['fill'] == 'none' and style['stroke'] == 'none':
+    if style["fill"] == "none" and style["stroke"] == "none":
         return
 
     # Start creation of the svg.
     # Later on, we'll write this svg to the clipboard, and send Ctrl+Shift+V to
     # Inkscape, to paste this style.
 
-    svg = '''
+    svg = """
           <?xml version="1.0" encoding="UTF-8" standalone="no"?>
           <svg>
-          '''
+          """
     # If a marker is applied, add its definition to the clipboard
     # Arrow styles stolen from tikz
-    if ('marker-end' in style and style['marker-end'] != 'none') or \
-            ('marker-start' in style and style['marker-start'] != 'none'):
-        svg += f'''
+    if ("marker-end" in style and style["marker-end"] != "none") or (
+        "marker-start" in style and style["marker-start"] != "none"
+    ):
+        svg += f"""
                 <defs id="marker-defs">
                 <marker
                 id="marker-arrow-{w}"
@@ -203,12 +237,13 @@ def paste_style(self, combination):
                    </g>
                 </marker>
                 </defs>
-                '''
+                """
 
-    style_string = ';'.join('{}: {}'.format(key, value)
-                            for key, value in sorted(style.items(), key=lambda x: x[0])
-                           )
+    style_string = ";".join(
+        "{}: {}".format(key, value)
+        for key, value in sorted(style.items(), key=lambda x: x[0])
+    )
     svg += f'<inkscape:clipboard style="{style_string}" /></svg>'
 
     copy(svg, target=TARGET)
-    self.press('v', X.ControlMask | X.ShiftMask)
+    self.press("v", X.ControlMask | X.ShiftMask)

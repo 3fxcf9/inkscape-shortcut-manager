@@ -97,6 +97,9 @@ def handle_single_key(self, ev):
     elif ev == "l":
         # Substract
         self.press("minus", X.ControlMask)
+    elif ev == "o":
+        # Duplicate
+        self.press("d", X.ControlMask)
     elif ev == "z":
         # Undo
         self.press("z", X.ControlMask)
